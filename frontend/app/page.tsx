@@ -48,22 +48,28 @@ interface KnowledgeArticle {
   updated_at: string;
 }
 
+interface Runbook {
+  id: number;
+  title: string;
+  project_type: string;
+  client: string;
+  site: string;
+  version: string;
+  window: string;
+  rollback_plan_required: boolean;
+  pre_check: string;
+  steps: string;
+  rollback: string;
+  validation: string;
+  comms: string;
+  owner: string;
+}
+
 const highlights = [
   { label: "Active tickets", value: "24", note: "6 need escalation" },
   { label: "SLA compliance", value: "98%", note: "Last 7 days" },
   { label: "Queue backlog", value: "42", note: "+8 since yesterday" },
   { label: "CSAT", value: "4.7/5", note: "Trailing 30 days" }
-];
-
-const runbooks = [
-  {
-    title: "Database latency triage",
-    detail: "Scale read replicas & check slow queries"
-  },
-  {
-    title: "Customer escalation workflow",
-    detail: "Capture impact, assign owner, post ETA"
-  }
 ];
 
 const telemetry = [
@@ -82,6 +88,8 @@ export default function Home() {
   const [knowledgeArticles, setKnowledgeArticles] = useState<KnowledgeArticle[]>([]);
   const [knowledgeKeyword, setKnowledgeKeyword] = useState("");
   const [knowledgeTags, setKnowledgeTags] = useState("");
+  const [runbooks, setRunbooks] = useState<Runbook[]>([]);
+  const [selectedRunbook, setSelectedRunbook] = useState<Runbook | null>(null);
 
   const [newTicket, setNewTicket] = useState({
     title: "",
@@ -97,6 +105,15 @@ export default function Home() {
     title: "",
     content: "",
     tags: ""
+  });
+
+  const [newRunbook, setNewRunbook] = useState({
+    project_type: "",
+    client: "",
+    site: "",
+    version: "",
+    window: "",
+    rollback_plan_required: false
   });
 
   useEffect(() => {
@@ -183,6 +200,16 @@ export default function Home() {
     return response.json();
   };
 
+  const fetchRunbooks = async (authToken: string) => {
+    const response = await fetch(`${API_BASE}/runbooks/`, {
+      headers: { Authorization: `Bearer ${authToken}` }
+    });
+    if (!response.ok) {
+      throw new Error("Unable to fetch runbooks.");
+    }
+    return response.json();
+  };
+
   useEffect(() => {
     if (!token) {
       return;
@@ -191,14 +218,17 @@ export default function Home() {
     const load = async () => {
       try {
         setLoading(true);
-        const [ticketData, userData, knowledgeData] = await Promise.all([
+        const [ticketData, userData, knowledgeData, runbookData] = await Promise.all([
           fetchTickets(token),
           fetchUsers(token),
-          fetchKnowledge(token)
+          fetchKnowledge(token),
+          fetchRunbooks(token)
         ]);
         setTickets(ticketData);
         setUsers(userData);
         setKnowledgeArticles(knowledgeData);
+        setRunbooks(runbookData);
+        setSelectedRunbook(runbookData[0] ?? null);
         if (ticketData.length > 0) {
           const detail = await fetchTicketDetail(ticketData[0].id, token);
           setSelectedTicket(detail);
@@ -327,6 +357,61 @@ export default function Home() {
     });
     setKnowledgeArticles(knowledgeData);
     setNewArticle({ title: "", content: "", tags: "" });
+  };
+
+  const buildRunbookSections = () => {
+    const summary = `${newRunbook.project_type} rollout for ${newRunbook.client} (${newRunbook.site})`;
+    return {
+      title: summary,
+      project_type: newRunbook.project_type,
+      client: newRunbook.client,
+      site: newRunbook.site,
+      version: newRunbook.version,
+      window: newRunbook.window,
+      rollback_plan_required: newRunbook.rollback_plan_required,
+      pre_check: `Confirm stakeholder approvals for ${summary}. Validate backups and confirm ${newRunbook.version} artifacts are staged.`,
+      steps: `1. Announce change window (${newRunbook.window}). 2. Deploy ${newRunbook.version} to ${newRunbook.site}. 3. Monitor logs and error rates.`,
+      rollback: newRunbook.rollback_plan_required
+        ? "If validation fails, revert to the prior stable release and restore from backups."
+        : "Rollback not required. Document any deviations and notify stakeholders.",
+      validation:
+        "Run smoke tests, verify monitoring dashboards, and confirm service health with the on-call team.",
+      comms: "Post start/end updates in the ops channel and email the client contact with outcomes."
+    };
+  };
+
+  const handleCreateRunbook = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!token) {
+      return;
+    }
+    const payload = buildRunbookSections();
+    const response = await fetch(`${API_BASE}/runbooks/`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      setError("Failed to create runbook.");
+      return;
+    }
+
+    const created = await response.json();
+    const updatedRunbooks = await fetchRunbooks(token);
+    setRunbooks(updatedRunbooks);
+    setSelectedRunbook(created);
+    setNewRunbook({
+      project_type: "",
+      client: "",
+      site: "",
+      version: "",
+      window: "",
+      rollback_plan_required: false
+    });
   };
 
   const handleUpdateTicket = async () => {
@@ -736,14 +821,178 @@ export default function Home() {
       </section>
 
       <section className="section">
-        <h2>Runbooks</h2>
-        <div className="list">
-          {runbooks.map((runbook) => (
-            <div className="list-item" key={runbook.title}>
-              <h4>{runbook.title}</h4>
-              <p>{runbook.detail}</p>
+        <div className="section-header">
+          <div>
+            <h2>Runbooks</h2>
+            <p className="section-subtitle">
+              Build a runbook plan and publish the generated execution guide.
+            </p>
+          </div>
+        </div>
+        <div className="runbook-grid">
+          <div className="ticket-panel">
+            <h3>Runbook planner</h3>
+            <form className="form" onSubmit={handleCreateRunbook}>
+              <label>
+                Project type
+                <input
+                  value={newRunbook.project_type}
+                  onChange={(event) =>
+                    setNewRunbook((prev) => ({
+                      ...prev,
+                      project_type: event.target.value
+                    }))
+                  }
+                  placeholder="Release, maintenance, migration"
+                  required
+                />
+              </label>
+              <label>
+                Client
+                <input
+                  value={newRunbook.client}
+                  onChange={(event) =>
+                    setNewRunbook((prev) => ({ ...prev, client: event.target.value }))
+                  }
+                  placeholder="Client or business unit"
+                  required
+                />
+              </label>
+              <label>
+                Site
+                <input
+                  value={newRunbook.site}
+                  onChange={(event) =>
+                    setNewRunbook((prev) => ({ ...prev, site: event.target.value }))
+                  }
+                  placeholder="Region / environment"
+                  required
+                />
+              </label>
+              <div className="form-row">
+                <label>
+                  Version
+                  <input
+                    value={newRunbook.version}
+                    onChange={(event) =>
+                      setNewRunbook((prev) => ({ ...prev, version: event.target.value }))
+                    }
+                    placeholder="v4.2.1"
+                    required
+                  />
+                </label>
+                <label>
+                  Window
+                  <input
+                    value={newRunbook.window}
+                    onChange={(event) =>
+                      setNewRunbook((prev) => ({ ...prev, window: event.target.value }))
+                    }
+                    placeholder="00:00-02:00 UTC"
+                    required
+                  />
+                </label>
+              </div>
+              <label className="checkbox">
+                <input
+                  type="checkbox"
+                  checked={newRunbook.rollback_plan_required}
+                  onChange={(event) =>
+                    setNewRunbook((prev) => ({
+                      ...prev,
+                      rollback_plan_required: event.target.checked
+                    }))
+                  }
+                />
+                Rollback plan required
+              </label>
+              <button className="primary" type="submit">
+                Generate runbook
+              </button>
+            </form>
+          </div>
+
+          <div className="ticket-panel">
+            <h3>Runbook library</h3>
+            <div className="ticket-list">
+              {runbooks.map((runbook) => (
+                <button
+                  key={runbook.id}
+                  type="button"
+                  className={`ticket-card ${
+                    selectedRunbook?.id === runbook.id ? "active" : ""
+                  }`}
+                  onClick={() => setSelectedRunbook(runbook)}
+                >
+                  <div>
+                    <h4>{runbook.title}</h4>
+                    <p>
+                      {runbook.project_type} · {runbook.client}
+                    </p>
+                  </div>
+                  <div className="ticket-meta">
+                    <span className="status-pill outline">{runbook.site}</span>
+                    <span className="status-pill outline">{runbook.version}</span>
+                  </div>
+                </button>
+              ))}
+              {runbooks.length === 0 && (
+                <p className="empty-state">No runbooks created yet.</p>
+              )}
             </div>
-          ))}
+          </div>
+
+          <div className="ticket-panel">
+            <h3>Runbook page</h3>
+            {selectedRunbook ? (
+              <div className="runbook-detail">
+                <div className="detail-header">
+                  <div>
+                    <h4>{selectedRunbook.title}</h4>
+                    <p>
+                      {selectedRunbook.client} · {selectedRunbook.site} ·{" "}
+                      {selectedRunbook.window}
+                    </p>
+                  </div>
+                  <div className="ticket-meta">
+                    <span className="status-pill outline">
+                      {selectedRunbook.project_type}
+                    </span>
+                    <span className="status-pill outline">
+                      {selectedRunbook.version}
+                    </span>
+                    {selectedRunbook.rollback_plan_required && (
+                      <span className="status-pill warning">Rollback plan</span>
+                    )}
+                  </div>
+                </div>
+                <div className="runbook-sections">
+                  <div>
+                    <h5>Pre-check</h5>
+                    <p>{selectedRunbook.pre_check}</p>
+                  </div>
+                  <div>
+                    <h5>Steps</h5>
+                    <p>{selectedRunbook.steps}</p>
+                  </div>
+                  <div>
+                    <h5>Rollback</h5>
+                    <p>{selectedRunbook.rollback}</p>
+                  </div>
+                  <div>
+                    <h5>Validation</h5>
+                    <p>{selectedRunbook.validation}</p>
+                  </div>
+                  <div>
+                    <h5>Comms</h5>
+                    <p>{selectedRunbook.comms}</p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <p className="empty-state">Select a runbook to view its page.</p>
+            )}
+          </div>
         </div>
       </section>
 
