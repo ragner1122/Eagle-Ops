@@ -91,14 +91,20 @@ class RunbookOut(BaseModel):
         from_attributes = True
 
 
+class KnowledgeArticleCreate(BaseModel):
+    title: str
+    content: str
+    tags: list[str]
+
+
 class KnowledgeArticleOut(BaseModel):
     id: int
     title: str
-    summary: str
-    tags: str
-
-    class Config:
-        from_attributes = True
+    content: str
+    tags: list[str]
+    created_by: str
+    created_at: datetime
+    updated_at: datetime
 
 
 class TelemetryMetricOut(BaseModel):
