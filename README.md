@@ -80,3 +80,18 @@ Open [http://localhost:3000](http://localhost:3000).
 
 - Admin: `admin@eagleops.io` / `AdminPass123`
 - Analyst: `analyst@eagleops.io` / `AnalystPass123`
+
+## API Endpoints
+
+### Tickets
+
+- `GET /tickets/` — list tickets
+- `POST /tickets/` — create ticket
+- `GET /tickets/{ticket_id}` — ticket details (includes timeline notes)
+- `PUT /tickets/{ticket_id}` — update ticket fields (status, severity, assignment, SLA)
+- `DELETE /tickets/{ticket_id}` — delete ticket
+- `POST /tickets/{ticket_id}/notes` — add timeline note
+
+### Users
+
+- `GET /users/` — list users for assignment

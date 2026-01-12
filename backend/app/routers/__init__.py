@@ -1,3 +1,3 @@
-from . import tickets, runbooks, knowledge, telemetry
+from . import tickets, runbooks, knowledge, telemetry, users
 
-__all__ = ["tickets", "runbooks", "knowledge", "telemetry"]
+__all__ = ["tickets", "runbooks", "knowledge", "telemetry", "users"]

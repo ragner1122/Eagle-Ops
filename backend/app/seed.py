@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 
-from .models import User, Ticket, Runbook, KnowledgeArticle, TelemetryMetric
+from .models import User, Ticket, TicketNote, Runbook, KnowledgeArticle, TelemetryMetric
 from .auth import hash_password
 
 
@@ -25,15 +25,33 @@ def seed_data(db: Session) -> None:
         Ticket(
             title="VPN access failing for field team",
             description="Users report timeouts when connecting from EU region.",
-            status="Open",
-            priority="High",
+            status="In Progress",
+            severity="High",
+            sla_status="At Risk",
             assignee_id=analyst.id,
         ),
         Ticket(
             title="Billing portal intermittent 500s",
             description="Spike in 500s during peak load. Needs triage.",
-            status="Investigating",
-            priority="Medium",
+            status="New",
+            severity="Medium",
+            sla_status="On Track",
+            assignee_id=admin.id,
+        ),
+        Ticket(
+            title="Customer cannot reset MFA",
+            description="Reset flow errors after token rotation. Needs manual reset.",
+            status="Waiting Client",
+            severity="Low",
+            sla_status="On Track",
+            assignee_id=analyst.id,
+        ),
+        Ticket(
+            title="Priority escalation: outage in APAC",
+            description="APAC customers report service outage. War room active.",
+            status="Resolved",
+            severity="Critical",
+            sla_status="Breached",
             assignee_id=admin.id,
         ),
     ]
@@ -71,4 +89,24 @@ def seed_data(db: Session) -> None:
     ]
 
     db.add_all(tickets + runbooks + articles + telemetry)
+    db.flush()
+
+    notes = [
+        TicketNote(
+            ticket_id=tickets[0].id,
+            body="Gathered traceroutes from EU region; escalating to network team.",
+            author=analyst.email,
+        ),
+        TicketNote(
+            ticket_id=tickets[1].id,
+            body="Waiting on billing service logs from engineering.",
+            author=admin.email,
+        ),
+        TicketNote(
+            ticket_id=tickets[3].id,
+            body="Confirmed mitigation deployed. Monitoring for 30 minutes.",
+            author=admin.email,
+        ),
+    ]
+    db.add_all(notes)
     db.commit()

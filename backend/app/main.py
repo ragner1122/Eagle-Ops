@@ -8,7 +8,7 @@ from .models import User
 from .schemas import Token
 from .auth import verify_password, create_access_token
 from .seed import seed_data
-from .routers import tickets, runbooks, knowledge, telemetry
+from .routers import tickets, runbooks, knowledge, telemetry, users
 
 app = FastAPI(title="EAGLE SupportOps API")
 
@@ -49,3 +49,4 @@ app.include_router(tickets.router)
 app.include_router(runbooks.router)
 app.include_router(knowledge.router)
 app.include_router(telemetry.router)
+app.include_router(users.router)
