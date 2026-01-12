@@ -22,12 +22,32 @@ class Ticket(Base):
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String(255), nullable=False)
     description = Column(Text, nullable=False)
-    status = Column(String(50), default="Open")
-    priority = Column(String(50), default="Medium")
+    status = Column(String(50), default="New")
+    severity = Column(String(50), default="Medium")
+    sla_status = Column(String(50), default="On Track")
     created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     assignee_id = Column(Integer, ForeignKey("users.id"), nullable=True)
 
     assignee = relationship("User", back_populates="tickets")
+    notes = relationship(
+        "TicketNote",
+        back_populates="ticket",
+        cascade="all, delete-orphan",
+        order_by="TicketNote.created_at.desc()",
+    )
+
+
+class TicketNote(Base):
+    __tablename__ = "ticket_notes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    ticket_id = Column(Integer, ForeignKey("tickets.id"), nullable=False, index=True)
+    body = Column(Text, nullable=False)
+    author = Column(String(255), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    ticket = relationship("Ticket", back_populates="notes")
 
 
 class Runbook(Base):

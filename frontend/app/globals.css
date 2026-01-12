@@ -77,6 +77,19 @@ header p {
   margin-bottom: 12px;
 }
 
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.section-subtitle {
+  color: var(--muted);
+  font-size: 13px;
+}
+
 .list {
   display: grid;
   gap: 12px;
@@ -92,6 +105,219 @@ header p {
 .list-item h4 {
   font-size: 15px;
   margin-bottom: 6px;
+}
+
+.ticket-grid {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.ticket-panel {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ticket-panel h3 {
+  font-size: 16px;
+}
+
+.ticket-list {
+  display: grid;
+  gap: 12px;
+}
+
+.ticket-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: #fdfdff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ticket-card.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+}
+
+.ticket-card h4 {
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.ticket-card p {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.ticket-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.status-pill {
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  background: #eef2ff;
+  color: #3730a3;
+}
+
+.status-pill.warning {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-pill.outline {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.status-pill.New {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.status-pill.In-Progress {
+  background: #ede9fe;
+  color: #6d28d9;
+}
+
+.status-pill.Waiting-Client {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-pill.Resolved {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.status-pill.sla.On-Track {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.status-pill.sla.At-Risk {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.status-pill.sla.Breached {
+  background: #fecaca;
+  color: #991b1b;
+}
+
+.form {
+  display: grid;
+  gap: 12px;
+}
+
+.form label {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.form input,
+.form textarea,
+.form select {
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  padding: 8px 10px;
+  font-size: 14px;
+  color: var(--text);
+  background: #fff;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.primary {
+  border: none;
+  border-radius: 8px;
+  padding: 10px 16px;
+  background: var(--accent);
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  justify-self: flex-start;
+}
+
+.detail {
+  display: grid;
+  gap: 16px;
+}
+
+.detail-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.detail-header h4 {
+  font-size: 16px;
+  margin-bottom: 6px;
+}
+
+.detail-header p {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.detail-body {
+  display: grid;
+  gap: 12px;
+}
+
+.detail-section h5 {
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+.notes {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.note {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: #fafafa;
+}
+
+.note span {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.attachments {
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.empty-state {
+  font-size: 13px;
+  color: var(--muted);
 }
 
 .badge {

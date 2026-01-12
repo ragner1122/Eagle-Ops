@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 from pydantic import BaseModel, EmailStr
 
 
@@ -28,12 +29,56 @@ class TicketOut(BaseModel):
     title: str
     description: str
     status: str
-    priority: str
+    severity: str
+    sla_status: str
     created_at: datetime
+    updated_at: datetime
     assignee_id: int | None
+    assignee: UserOut | None
 
     class Config:
         from_attributes = True
+
+
+TicketStatus = Literal["New", "In Progress", "Waiting Client", "Resolved"]
+TicketSeverity = Literal["Low", "Medium", "High", "Critical"]
+SlaStatus = Literal["On Track", "At Risk", "Breached"]
+
+
+class TicketCreate(BaseModel):
+    title: str
+    description: str
+    status: TicketStatus = "New"
+    severity: TicketSeverity = "Medium"
+    sla_status: SlaStatus = "On Track"
+    assignee_id: int | None = None
+
+
+class TicketUpdate(BaseModel):
+    title: str | None = None
+    description: str | None = None
+    status: TicketStatus | None = None
+    severity: TicketSeverity | None = None
+    sla_status: SlaStatus | None = None
+    assignee_id: int | None = None
+
+
+class TicketNoteCreate(BaseModel):
+    body: str
+
+
+class TicketNoteOut(BaseModel):
+    id: int
+    body: str
+    author: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class TicketDetailOut(TicketOut):
+    notes: list[TicketNoteOut]
 
 
 class RunbookOut(BaseModel):
