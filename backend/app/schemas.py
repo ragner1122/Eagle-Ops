@@ -81,6 +81,20 @@ class TicketDetailOut(TicketOut):
     notes: list[TicketNoteOut]
 
 
+class TicketAiAssistOut(BaseModel):
+    id: int
+    ticket_id: int
+    summary: str
+    likely_causes: str
+    next_actions: str
+    resolution_note: str
+    created_at: datetime
+    generated_by_ai: bool
+
+    class Config:
+        from_attributes = True
+
+
 class RunbookCreate(BaseModel):
     title: str | None = None
     project_type: str
@@ -111,6 +125,21 @@ class RunbookOut(BaseModel):
     validation: str
     comms: str
     owner: str
+
+    class Config:
+        from_attributes = True
+
+
+class RunbookAiAssistOut(BaseModel):
+    id: int
+    runbook_id: int
+    pre_check: str
+    steps: str
+    rollback: str
+    validation: str
+    client_email: str
+    created_at: datetime
+    generated_by_ai: bool
 
     class Config:
         from_attributes = True
