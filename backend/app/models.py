@@ -36,6 +36,12 @@ class Ticket(Base):
         cascade="all, delete-orphan",
         order_by="TicketNote.created_at.desc()",
     )
+    ai_assists = relationship(
+        "TicketAiAssist",
+        back_populates="ticket",
+        cascade="all, delete-orphan",
+        order_by="TicketAiAssist.created_at.desc()",
+    )
 
 
 class TicketNote(Base):
@@ -48,6 +54,21 @@ class TicketNote(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     ticket = relationship("Ticket", back_populates="notes")
+
+
+class TicketAiAssist(Base):
+    __tablename__ = "ticket_ai_assists"
+
+    id = Column(Integer, primary_key=True, index=True)
+    ticket_id = Column(Integer, ForeignKey("tickets.id"), nullable=False, index=True)
+    summary = Column(Text, nullable=False)
+    likely_causes = Column(Text, nullable=False)
+    next_actions = Column(Text, nullable=False)
+    resolution_note = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    generated_by_ai = Column(Boolean, default=True)
+
+    ticket = relationship("Ticket", back_populates="ai_assists")
 
 
 class Runbook(Base):
@@ -67,6 +88,13 @@ class Runbook(Base):
     validation = Column(Text, nullable=False)
     comms = Column(Text, nullable=False)
     owner = Column(String(255), nullable=False)
+
+    ai_assists = relationship(
+        "RunbookAiAssist",
+        back_populates="runbook",
+        cascade="all, delete-orphan",
+        order_by="RunbookAiAssist.created_at.desc()",
+    )
 
 
 class KnowledgeArticle(Base):
@@ -89,3 +117,19 @@ class TelemetryMetric(Base):
     value = Column(String(255), nullable=False)
     status = Column(String(50), nullable=False)
     captured_at = Column(DateTime, default=datetime.utcnow)
+
+
+class RunbookAiAssist(Base):
+    __tablename__ = "runbook_ai_assists"
+
+    id = Column(Integer, primary_key=True, index=True)
+    runbook_id = Column(Integer, ForeignKey("runbooks.id"), nullable=False, index=True)
+    pre_check = Column(Text, nullable=False)
+    steps = Column(Text, nullable=False)
+    rollback = Column(Text, nullable=False)
+    validation = Column(Text, nullable=False)
+    client_email = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    generated_by_ai = Column(Boolean, default=True)
+
+    runbook = relationship("Runbook", back_populates="ai_assists")

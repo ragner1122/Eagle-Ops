@@ -38,6 +38,17 @@ interface TicketDetail extends Ticket {
   notes: TicketNote[];
 }
 
+interface TicketAiAssist {
+  id: number;
+  ticket_id: number;
+  summary: string;
+  likely_causes: string;
+  next_actions: string;
+  resolution_note: string;
+  created_at: string;
+  generated_by_ai: boolean;
+}
+
 interface KnowledgeArticle {
   id: number;
   title: string;
@@ -65,6 +76,18 @@ interface Runbook {
   owner: string;
 }
 
+interface RunbookAiAssist {
+  id: number;
+  runbook_id: number;
+  pre_check: string;
+  steps: string;
+  rollback: string;
+  validation: string;
+  client_email: string;
+  created_at: string;
+  generated_by_ai: boolean;
+}
+
 const highlights = [
   { label: "Active tickets", value: "24", note: "6 need escalation" },
   { label: "SLA compliance", value: "98%", note: "Last 7 days" },
@@ -82,14 +105,18 @@ export default function Home() {
   const [token, setToken] = useState<string | null>(null);
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [selectedTicket, setSelectedTicket] = useState<TicketDetail | null>(null);
+  const [ticketAiAssist, setTicketAiAssist] = useState<TicketAiAssist | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [ticketAiLoading, setTicketAiLoading] = useState(false);
+  const [runbookAiLoading, setRunbookAiLoading] = useState(false);
   const [knowledgeArticles, setKnowledgeArticles] = useState<KnowledgeArticle[]>([]);
   const [knowledgeKeyword, setKnowledgeKeyword] = useState("");
   const [knowledgeTags, setKnowledgeTags] = useState("");
   const [runbooks, setRunbooks] = useState<Runbook[]>([]);
   const [selectedRunbook, setSelectedRunbook] = useState<Runbook | null>(null);
+  const [runbookAiAssist, setRunbookAiAssist] = useState<RunbookAiAssist | null>(null);
 
   const [newTicket, setNewTicket] = useState({
     title: "",
@@ -173,11 +200,45 @@ export default function Home() {
     return response.json();
   };
 
+  const fetchTicketAiAssist = async (ticketId: number, authToken: string) => {
+    const response = await fetch(`${API_BASE}/tickets/${ticketId}/ai-assist/latest`, {
+      headers: { Authorization: `Bearer ${authToken}` }
+    });
+    if (response.status === 404) {
+      return null;
+    }
+    if (!response.ok) {
+      throw new Error("Unable to fetch ticket AI assist.");
+    }
+    return response.json();
+  };
+
   const parseTags = (value: string) =>
     value
       .split(",")
       .map((tag) => tag.trim())
       .filter(Boolean);
+
+  const splitAiList = (value: string) =>
+    value
+      .split("\n")
+      .map((line) => line.replace(/^[-*]\s*/, "").trim())
+      .filter(Boolean);
+
+  const buildTicketAiNote = (assist: TicketAiAssist) => {
+    const sections = [
+      { title: "Summary", content: assist.summary },
+      { title: "Likely causes", content: assist.likely_causes },
+      { title: "Next actions", content: assist.next_actions },
+      { title: "Resolution note draft", content: assist.resolution_note }
+    ];
+    const formattedSections = sections
+      .map((section) => `${section.title}:\n${section.content}`)
+      .join("\n\n");
+    return `AI Assist (suggestions only)\nGenerated ${new Date(
+      assist.created_at
+    ).toLocaleString()}\n\n${formattedSections}`;
+  };
 
   const fetchKnowledge = async (
     authToken: string,
@@ -206,6 +267,19 @@ export default function Home() {
     });
     if (!response.ok) {
       throw new Error("Unable to fetch runbooks.");
+    }
+    return response.json();
+  };
+
+  const fetchRunbookAiAssist = async (runbookId: number, authToken: string) => {
+    const response = await fetch(`${API_BASE}/runbooks/${runbookId}/ai-assist/latest`, {
+      headers: { Authorization: `Bearer ${authToken}` }
+    });
+    if (response.status === 404) {
+      return null;
+    }
+    if (!response.ok) {
+      throw new Error("Unable to fetch runbook AI assist.");
     }
     return response.json();
   };
@@ -244,6 +318,44 @@ export default function Home() {
 
     load();
   }, [token]);
+
+  useEffect(() => {
+    const loadTicketAssist = async () => {
+      if (!token || !selectedTicket) {
+        setTicketAiAssist(null);
+        return;
+      }
+      try {
+        const assist = await fetchTicketAiAssist(selectedTicket.id, token);
+        setTicketAiAssist(assist);
+      } catch (assistError) {
+        setError(
+          assistError instanceof Error ? assistError.message : "Failed to load AI assist."
+        );
+      }
+    };
+
+    loadTicketAssist();
+  }, [token, selectedTicket?.id]);
+
+  useEffect(() => {
+    const loadRunbookAssist = async () => {
+      if (!token || !selectedRunbook) {
+        setRunbookAiAssist(null);
+        return;
+      }
+      try {
+        const assist = await fetchRunbookAiAssist(selectedRunbook.id, token);
+        setRunbookAiAssist(assist);
+      } catch (assistError) {
+        setError(
+          assistError instanceof Error ? assistError.message : "Failed to load AI assist."
+        );
+      }
+    };
+
+    loadRunbookAssist();
+  }, [token, selectedRunbook?.id]);
 
   const selectTicket = async (ticketId: number) => {
     if (!token) {
@@ -463,6 +575,73 @@ export default function Home() {
 
     setNoteBody("");
     await selectTicket(selectedTicket.id);
+  };
+
+  const handleGenerateTicketAiAssist = async () => {
+    if (!token || !selectedTicket) {
+      return;
+    }
+    try {
+      setTicketAiLoading(true);
+      const response = await fetch(
+        `${API_BASE}/tickets/${selectedTicket.id}/ai-assist`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json"
+          }
+        }
+      );
+      if (!response.ok) {
+        throw new Error("Failed to generate ticket AI assist.");
+      }
+      const assist = await response.json();
+      setTicketAiAssist(assist);
+    } catch (assistError) {
+      setError(
+        assistError instanceof Error ? assistError.message : "Failed to generate AI."
+      );
+    } finally {
+      setTicketAiLoading(false);
+    }
+  };
+
+  const handleGenerateRunbookAiAssist = async () => {
+    if (!token || !selectedRunbook) {
+      return;
+    }
+    try {
+      setRunbookAiLoading(true);
+      const response = await fetch(
+        `${API_BASE}/runbooks/${selectedRunbook.id}/ai-assist`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json"
+          }
+        }
+      );
+      if (!response.ok) {
+        throw new Error("Failed to generate runbook AI assist.");
+      }
+      const assist = await response.json();
+      setRunbookAiAssist(assist);
+    } catch (assistError) {
+      setError(
+        assistError instanceof Error ? assistError.message : "Failed to generate AI."
+      );
+    } finally {
+      setRunbookAiLoading(false);
+    }
+  };
+
+  const handleCopyAiToNotes = () => {
+    if (!ticketAiAssist) {
+      return;
+    }
+    setNoteBody(buildTicketAiNote(ticketAiAssist));
   };
 
   const activeCount = useMemo(
@@ -804,6 +983,66 @@ export default function Home() {
                   </form>
                 </div>
 
+                <div className="detail-section ai-panel">
+                  <div className="ai-header">
+                    <h5>AI Assist</h5>
+                    <span className="status-pill outline">Suggestions only</span>
+                  </div>
+                  <div className="ai-actions">
+                    <button
+                      className="secondary"
+                      type="button"
+                      onClick={handleGenerateTicketAiAssist}
+                      disabled={ticketAiLoading}
+                    >
+                      {ticketAiLoading ? "Generating..." : "Generate AI assist"}
+                    </button>
+                    <button
+                      className="secondary"
+                      type="button"
+                      onClick={handleCopyAiToNotes}
+                      disabled={!ticketAiAssist}
+                    >
+                      Copy into Notes
+                    </button>
+                  </div>
+                  {ticketAiAssist ? (
+                    <div className="ai-content">
+                      <p className="ai-meta">
+                        Generated {new Date(ticketAiAssist.created_at).toLocaleString()}
+                      </p>
+                      <div className="ai-block">
+                        <h6>Summary</h6>
+                        <p>{ticketAiAssist.summary}</p>
+                      </div>
+                      <div className="ai-block">
+                        <h6>Likely causes</h6>
+                        <ul className="ai-list">
+                          {splitAiList(ticketAiAssist.likely_causes).map((item) => (
+                            <li key={item}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div className="ai-block">
+                        <h6>Next actions</h6>
+                        <ul className="ai-list">
+                          {splitAiList(ticketAiAssist.next_actions).map((item) => (
+                            <li key={item}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div className="ai-block">
+                        <h6>Resolution note draft</h6>
+                        <p>{ticketAiAssist.resolution_note}</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="empty-state">
+                      Generate an AI assist to see suggested summaries and next actions.
+                    </p>
+                  )}
+                </div>
+
                 <div className="detail-section">
                   <h5>Attachments</h5>
                   <div className="attachments">
@@ -987,6 +1226,69 @@ export default function Home() {
                     <h5>Comms</h5>
                     <p>{selectedRunbook.comms}</p>
                   </div>
+                </div>
+                <div className="detail-section ai-panel">
+                  <div className="ai-header">
+                    <h5>Runbook AI</h5>
+                    <span className="status-pill outline">Suggestions only</span>
+                  </div>
+                  <div className="ai-actions">
+                    <button
+                      className="secondary"
+                      type="button"
+                      onClick={handleGenerateRunbookAiAssist}
+                      disabled={runbookAiLoading}
+                    >
+                      {runbookAiLoading ? "Generating..." : "Generate AI assist"}
+                    </button>
+                  </div>
+                  {runbookAiAssist ? (
+                    <div className="ai-content">
+                      <p className="ai-meta">
+                        Generated {new Date(runbookAiAssist.created_at).toLocaleString()}
+                      </p>
+                      <div className="ai-block">
+                        <h6>Pre-check list</h6>
+                        <ul className="ai-list">
+                          {splitAiList(runbookAiAssist.pre_check).map((item) => (
+                            <li key={item}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div className="ai-block">
+                        <h6>Steps</h6>
+                        <ul className="ai-list">
+                          {splitAiList(runbookAiAssist.steps).map((item) => (
+                            <li key={item}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div className="ai-block">
+                        <h6>Rollback</h6>
+                        <ul className="ai-list">
+                          {splitAiList(runbookAiAssist.rollback).map((item) => (
+                            <li key={item}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div className="ai-block">
+                        <h6>Validation</h6>
+                        <ul className="ai-list">
+                          {splitAiList(runbookAiAssist.validation).map((item) => (
+                            <li key={item}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div className="ai-block">
+                        <h6>Client email draft</h6>
+                        <pre className="ai-pre">{runbookAiAssist.client_email}</pre>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="empty-state">
+                      Generate an AI assist to draft the runbook communications.
+                    </p>
+                  )}
                 </div>
               </div>
             ) : (
