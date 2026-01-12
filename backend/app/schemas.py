@@ -81,10 +81,35 @@ class TicketDetailOut(TicketOut):
     notes: list[TicketNoteOut]
 
 
+class RunbookCreate(BaseModel):
+    title: str | None = None
+    project_type: str
+    client: str
+    site: str
+    version: str
+    window: str
+    rollback_plan_required: bool = False
+    pre_check: str
+    steps: str
+    rollback: str
+    validation: str
+    comms: str
+
+
 class RunbookOut(BaseModel):
     id: int
     title: str
+    project_type: str
+    client: str
+    site: str
+    version: str
+    window: str
+    rollback_plan_required: bool
+    pre_check: str
     steps: str
+    rollback: str
+    validation: str
+    comms: str
     owner: str
 
     class Config:

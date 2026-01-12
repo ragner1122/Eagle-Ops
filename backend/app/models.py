@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
 from datetime import datetime
 
@@ -55,7 +55,17 @@ class Runbook(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String(255), nullable=False)
+    project_type = Column(String(100), nullable=False)
+    client = Column(String(255), nullable=False)
+    site = Column(String(255), nullable=False)
+    version = Column(String(100), nullable=False)
+    window = Column(String(255), nullable=False)
+    rollback_plan_required = Column(Boolean, default=False)
+    pre_check = Column(Text, nullable=False)
     steps = Column(Text, nullable=False)
+    rollback = Column(Text, nullable=False)
+    validation = Column(Text, nullable=False)
+    comms = Column(Text, nullable=False)
     owner = Column(String(255), nullable=False)
 
 
