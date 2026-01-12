@@ -76,6 +76,18 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
+## Testing
+
+Run the full backend + frontend test suite from the repo root:
+
+```bash
+./run_tests.sh
+```
+
+This script creates a local `.venv-test` virtual environment, installs backend
+dependencies, runs the backend pytest suite, installs frontend dependencies, runs
+`npm run build`, and executes a frontend smoke test.
+
 ## Demo Accounts
 
 - Admin: `admin@eagleops.io` / `AdminPass123`
