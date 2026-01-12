@@ -38,6 +38,16 @@ interface TicketDetail extends Ticket {
   notes: TicketNote[];
 }
 
+interface KnowledgeArticle {
+  id: number;
+  title: string;
+  content: string;
+  tags: string[];
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
 const highlights = [
   { label: "Active tickets", value: "24", note: "6 need escalation" },
   { label: "SLA compliance", value: "98%", note: "Last 7 days" },
@@ -56,17 +66,6 @@ const runbooks = [
   }
 ];
 
-const knowledge = [
-  {
-    title: "Resetting MFA for locked accounts",
-    detail: "Verify identity, rotate token, confirm login"
-  },
-  {
-    title: "Tracking incident status updates",
-    detail: "Post timeline updates every 30 minutes"
-  }
-];
-
 const telemetry = [
   { name: "API uptime", value: "99.95%", status: "Healthy" },
   { name: "First response SLA", value: "98%", status: "Healthy" },
@@ -80,6 +79,9 @@ export default function Home() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [knowledgeArticles, setKnowledgeArticles] = useState<KnowledgeArticle[]>([]);
+  const [knowledgeKeyword, setKnowledgeKeyword] = useState("");
+  const [knowledgeTags, setKnowledgeTags] = useState("");
 
   const [newTicket, setNewTicket] = useState({
     title: "",
@@ -91,6 +93,11 @@ export default function Home() {
   });
 
   const [noteBody, setNoteBody] = useState("");
+  const [newArticle, setNewArticle] = useState({
+    title: "",
+    content: "",
+    tags: ""
+  });
 
   useEffect(() => {
     const authenticate = async () => {
@@ -149,6 +156,33 @@ export default function Home() {
     return response.json();
   };
 
+  const parseTags = (value: string) =>
+    value
+      .split(",")
+      .map((tag) => tag.trim())
+      .filter(Boolean);
+
+  const fetchKnowledge = async (
+    authToken: string,
+    filters?: { keyword?: string; tags?: string[] }
+  ) => {
+    const params = new URLSearchParams();
+    if (filters?.keyword) {
+      params.append("keyword", filters.keyword);
+    }
+    if (filters?.tags?.length) {
+      filters.tags.forEach((tag) => params.append("tags", tag));
+    }
+    const query = params.toString();
+    const response = await fetch(`${API_BASE}/knowledge/${query ? `?${query}` : ""}`, {
+      headers: { Authorization: `Bearer ${authToken}` }
+    });
+    if (!response.ok) {
+      throw new Error("Unable to fetch knowledge articles.");
+    }
+    return response.json();
+  };
+
   useEffect(() => {
     if (!token) {
       return;
@@ -157,12 +191,14 @@ export default function Home() {
     const load = async () => {
       try {
         setLoading(true);
-        const [ticketData, userData] = await Promise.all([
+        const [ticketData, userData, knowledgeData] = await Promise.all([
           fetchTickets(token),
-          fetchUsers(token)
+          fetchUsers(token),
+          fetchKnowledge(token)
         ]);
         setTickets(ticketData);
         setUsers(userData);
+        setKnowledgeArticles(knowledgeData);
         if (ticketData.length > 0) {
           const detail = await fetchTicketDetail(ticketData[0].id, token);
           setSelectedTicket(detail);
@@ -235,6 +271,62 @@ export default function Home() {
       assignee_id: ""
     });
     await selectTicket(created.id);
+  };
+
+  const handleKnowledgeSearch = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!token) {
+      return;
+    }
+    try {
+      setLoading(true);
+      const knowledgeData = await fetchKnowledge(token, {
+        keyword: knowledgeKeyword.trim() || undefined,
+        tags: parseTags(knowledgeTags)
+      });
+      setKnowledgeArticles(knowledgeData);
+    } catch (searchError) {
+      setError(
+        searchError instanceof Error ? searchError.message : "Failed to search."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateArticle = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!token) {
+      return;
+    }
+
+    const payload = {
+      title: newArticle.title,
+      content: newArticle.content,
+      tags: parseTags(newArticle.tags)
+    };
+
+    const response = await fetch(`${API_BASE}/knowledge/`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      setError("Failed to create knowledge article.");
+      return;
+    }
+
+    await response.json();
+    const knowledgeData = await fetchKnowledge(token, {
+      keyword: knowledgeKeyword.trim() || undefined,
+      tags: parseTags(knowledgeTags)
+    });
+    setKnowledgeArticles(knowledgeData);
+    setNewArticle({ title: "", content: "", tags: "" });
   };
 
   const handleUpdateTicket = async () => {
@@ -656,14 +748,104 @@ export default function Home() {
       </section>
 
       <section className="section">
-        <h2>Knowledge Base</h2>
+        <div className="section-header">
+          <div>
+            <h2>Knowledge Base</h2>
+            <p className="section-subtitle">
+              Capture reusable guidance and search by keywords or tags.
+            </p>
+          </div>
+        </div>
+        <div className="grid">
+          <div className="card">
+            <h3>Search articles</h3>
+            <form className="form" onSubmit={handleKnowledgeSearch}>
+              <label>
+                Keyword
+                <input
+                  value={knowledgeKeyword}
+                  onChange={(event) => setKnowledgeKeyword(event.target.value)}
+                  placeholder="Search titles or content"
+                />
+              </label>
+              <label>
+                Tags (comma separated)
+                <input
+                  value={knowledgeTags}
+                  onChange={(event) => setKnowledgeTags(event.target.value)}
+                  placeholder="incident, auth"
+                />
+              </label>
+              <button className="primary" type="submit">
+                Search knowledge
+              </button>
+            </form>
+          </div>
+          <div className="card">
+            <h3>Create article</h3>
+            <form className="form" onSubmit={handleCreateArticle}>
+              <label>
+                Title
+                <input
+                  value={newArticle.title}
+                  onChange={(event) =>
+                    setNewArticle((prev) => ({ ...prev, title: event.target.value }))
+                  }
+                  placeholder="Article title"
+                  required
+                />
+              </label>
+              <label>
+                Content
+                <textarea
+                  value={newArticle.content}
+                  onChange={(event) =>
+                    setNewArticle((prev) => ({ ...prev, content: event.target.value }))
+                  }
+                  placeholder="Write the knowledge article steps"
+                  rows={4}
+                  required
+                />
+              </label>
+              <label>
+                Tags
+                <input
+                  value={newArticle.tags}
+                  onChange={(event) =>
+                    setNewArticle((prev) => ({ ...prev, tags: event.target.value }))
+                  }
+                  placeholder="auth, onboarding"
+                  required
+                />
+              </label>
+              <button className="primary" type="submit">
+                Create article
+              </button>
+            </form>
+          </div>
+        </div>
         <div className="list">
-          {knowledge.map((article) => (
-            <div className="list-item" key={article.title}>
-              <h4>{article.title}</h4>
-              <p>{article.detail}</p>
-            </div>
-          ))}
+          {knowledgeArticles.length ? (
+            knowledgeArticles.map((article) => (
+              <div className="list-item" key={article.id}>
+                <h4>{article.title}</h4>
+                <p>{article.content}</p>
+                <div className="ticket-meta">
+                  {article.tags.map((tag) => (
+                    <span className="status-pill outline" key={tag}>
+                      {tag}
+                    </span>
+                  ))}
+                  <span className="status-pill outline">
+                    Updated {new Date(article.updated_at).toLocaleDateString()}
+                  </span>
+                  <span className="status-pill outline">By {article.created_by}</span>
+                </div>
+              </div>
+            ))
+          ) : (
+            <p className="empty-state">No knowledge articles found.</p>
+          )}
         </div>
       </section>
 

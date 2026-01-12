@@ -72,13 +72,15 @@ def seed_data(db: Session) -> None:
     articles = [
         KnowledgeArticle(
             title="Resetting MFA for locked accounts",
-            summary="Guide for safely resetting MFA tokens and confirming identity.",
+            content="Guide for safely resetting MFA tokens, confirming identity, and documenting the reset.",
             tags="auth,accounts,mfa",
+            created_by=admin.email,
         ),
         KnowledgeArticle(
             title="Tracking incident status updates",
-            summary="How to post timeline updates in the incident channel.",
+            content="How to post timeline updates in the incident channel and share stakeholder comms.",
             tags="incident,communications",
+            created_by=analyst.email,
         ),
     ]
 
